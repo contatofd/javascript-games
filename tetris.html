@@ -1,0 +1,327 @@
+﻿<!--
+Tetris 2022 - By Fabiano Dias - contatofd@gmail.com
+-->
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="utf-8" />
+    <title>Tetris</title>
+    <style type="text/css">
+        body {
+            font-family: Trebuchet MS, Arial;
+            color: navy;
+            padding-top: 20px;
+            padding-left: 50px;
+            background-color: white;
+        }
+
+        #popup {
+            padding: 20px;
+            position: fixed;
+            background-color: #fff;
+            border: 2px solid navy;
+            top: 250px;
+            left: 225px;
+            width: 200px;
+            text-align: center;
+        }
+
+        input[type="button"] {
+            background-color: navy;
+            border: none;
+            color: #fff;
+            padding: 10px;
+            font-size: 16px;
+        }
+
+        #grid {
+            display: table;
+            width: auto;
+            background-color: lightskyblue;
+            border: 5px solid navy;
+        }
+
+            #grid div {
+                display: table-row;
+            }
+
+                #grid div div {
+                    display: inline-table;
+                    width: 28px;
+                    height: 28px;
+                    border-top: 1px solid navy;
+                    border-right: 1px solid navy;
+                    box-shadow: inset 1px 1px 3px white;
+                }
+
+        .completed_row {
+            background-color: white;
+            animation: blinker 0.2s step-start infinite;
+        }
+
+        @keyframes blinker {
+            40% {
+                opacity: 40%;
+            }
+        }
+    </style>
+    <script type="text/javascript">
+        "use strict"
+
+        const Cols = 11
+        const Rows = 18
+        const Colors = ["blue", "red", "green", "orange"]
+        const Blocks = [
+            [[1], [1], [1]],            // I
+            [[1, 0], [1, 0], [1, 1]],   // L
+            [[1, 1, 1], [0, 1, 0]],     // T
+            [[1, 1, 0], [0, 1, 1]],     // Z
+            [[1, 1], [1, 1]]            // square
+        ]
+        const GameStatus = {
+            Waiting: 0,
+            Playing: 1,
+            Paused: 2,
+            GameOver: 3,
+        }
+
+        let grid; let posX; let posY; let block; let color; let moving; let speed; let completed; let score; let gameStatus;
+
+        function initVars() {
+            grid = []
+            posX = 0
+            posY = 0
+            moving = null
+            speed = 500
+            completed = 0
+            score = 0
+            gameStatus = GameStatus.Waiting
+        }
+
+        function createBlock() {
+            color = Math.floor(Math.random() * Colors.length)
+            block = Blocks[Math.floor(Math.random() * Blocks.length)]
+            posX = 0
+            posY = parseInt(Cols / 2) - parseInt((block[0].length) / 2)
+            if (isValidPosition()) {
+                renderBlock()
+                startMovingBlock()
+            }
+            else {
+                renderBlock()
+                gameOver()
+            }
+        }
+
+        function rotateBlock() {
+            let _block = [];
+            for (let x = block[0].length - 1; x >= 0; x--) {
+                let arr = []
+                for (let y = 0; y < block.length; y++) {
+                    arr.push(block[y][x])
+                }
+                _block.push(arr)
+            }
+            block = _block
+        }
+
+        function renderBlock() {
+            block.map((arr, x) => {
+                arr.map((el, y) => {
+                    if (el > 0) {
+                        grid[posX + x][posY + y] = color + 1
+                        document.getElementById("grid").children[posX + x].children[posY + y].style.backgroundColor = Colors[color]
+                    }
+                })
+            })
+        }
+
+        function clearBlock() {
+            block.map((arr, x) => {
+                arr.map((el, y) => {
+                    if (el > 0) {
+                        grid[posX + x][posY + y] = 0
+                        document.getElementById("grid").children[posX + x].children[posY + y].style.backgroundColor = ''
+                    }
+                })
+            })
+        }
+
+        function isValidPosition() {
+            if (posY < 0 || posY + block[0].length > Cols || posX + block.length > Rows) return false
+            let isInvalid = block.some((arr, x) => {
+                return arr.some((el, y) => {
+                    return el > 0 && grid[posX + x][posY + y] > 0
+                })
+            })
+            return !isInvalid
+        }
+
+        function computeCompletedRows() {
+            let wait = 0
+            let _grid = []
+            grid.map((arr, x) => {
+                let isCompleted = arr.every(function (el) {
+                    return el > 0
+                })
+                if (isCompleted) {
+                    _grid.unshift(new Array(Cols).fill(0))
+                    wait = 500
+                    completed++
+                    score += Cols
+                    let isSameColor = arr.every(function (el) {
+                        return el == arr[0]
+                    })
+                    if (isSameColor) score += Cols
+                    document.getElementById("grid").children[x].className = 'completed_row'
+                }
+                else
+                    _grid.push(arr)
+            })
+            if (wait > 0) {
+                grid = _grid
+                document.getElementById("completed").textContent = completed
+                document.getElementById("score").textContent = score
+            }
+            setTimeout(function () {
+                renderGrid()
+                createBlock()
+            }, wait)
+        }
+
+        function createGrid() {
+            for (let x = 0; x < Rows; x++) {
+                let arr = new Array(Cols).fill(0);
+                grid.push(arr)
+            }
+            renderGrid()
+        }
+
+        function renderGrid() {
+            let html = grid.map(arr => `
+                    <div>
+                        ${arr.map(el => `<div ${Colors[el - 1] != undefined ? "style='background:" + Colors[el - 1] + "'" : ""}>&nbsp;</div>`).join("")}
+                    </div>
+                `).join("")
+            document.getElementById("grid").innerHTML = html
+            //console.log(grid)
+        }
+
+        function startGame() {
+            document.getElementById("popup").style.display = 'none'
+            initVars()
+            createGrid()
+            createBlock()
+        }
+
+        function startMovingBlock() {
+            gameStatus = GameStatus.Playing
+            moving = setInterval(moveDown, speed)
+        }
+
+        function stopMovingBlock() {
+            gameStatus = GameStatus.Waiting
+            clearInterval(moving)
+        }
+
+        function moveUp() {
+            if (gameStatus == GameStatus.Playing) {
+                let _block = block
+                clearBlock()
+                rotateBlock()
+                let _diff_posY = parseInt((_block[0].length - block[0].length) / 2)
+                posY += _diff_posY
+                if (!isValidPosition()) {
+                    posY -= _diff_posY
+                    block = _block
+                }
+                renderBlock()
+            }
+        }
+
+        function moveDown() {
+            if (gameStatus == GameStatus.Playing) {
+                clearBlock()
+                posX++
+                if (!isValidPosition()) {
+                    posX--
+                    stopMovingBlock()
+                    renderBlock()
+                    computeCompletedRows()
+                }
+                else
+                    renderBlock()
+            }
+        }
+
+        function moveLeft() {
+            if (gameStatus == GameStatus.Playing) {
+                clearBlock()
+                posY--
+                if (!isValidPosition()) posY++
+                renderBlock()
+            }
+        }
+
+        function moveRight() {
+            if (gameStatus == GameStatus.Playing) {
+                clearBlock()
+                posY++
+                if (!isValidPosition()) posY--
+                renderBlock()
+            }
+        }
+
+        function pause() {
+            let popup = document.getElementById("popup")
+            if (gameStatus == GameStatus.Playing) {
+                gameStatus = GameStatus.Paused
+                popup.innerHTML = '<h2>JOGO PAUSADO!</h2><input type="button" value="Continuar" onclick="pause()" />'
+                popup.style.display = ''
+            }
+            else {
+                gameStatus = GameStatus.Playing
+                popup.style.display = 'none'
+            }
+        }
+
+        function gameOver() {
+            gameStatus = GameStatus.GameOver
+            let popup = document.getElementById("popup")
+            popup.innerHTML = '<h1>GAME OVER!</h1><input type="button" value="Jogar novamente" onclick="startGame()" />'
+            popup.style.display = ''
+        }
+
+        document.addEventListener("DOMContentLoaded", function (event) {
+            document.addEventListener("keydown", (event) => {
+                if (event.key == "ArrowUp") moveUp()
+                if (event.key == "ArrowDown") moveDown()
+                if (event.key == "ArrowLeft") moveLeft()
+                if (event.key == "ArrowRight") moveRight()
+                if (event.key == "Pause") pause()
+            })
+            startGame()
+        });
+
+    </script>
+</head>
+<body>
+
+    <h1>Tetris</h1>
+    <p>
+        Utilize as setas da esquera e direita para mover o bloco, seta para cima faz o bloco girar<br>
+        Seta para baixo faz o bloco cair mais rapidamente, e a tecla "pause/break" para pausar<br>
+        Complete a linha para pontuar, linha da mesma cor garante pontuação dobrada
+    </p>
+
+    <div id="grid"></div>
+
+    <h2>
+        Linhas: <span id="completed">0</span><br>
+        Pontuação: <span id="score">0</span>
+    </h2>
+
+    <div id="popup"></div>
+
+</body>
+</html>

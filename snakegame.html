@@ -1,0 +1,268 @@
+﻿<!--
+Snake 2021 - By Fabiano Dias - contatofd@gmail.com
+-->
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="utf-8" />
+    <title>Snake</title>
+    <style type="text/css">
+        body {
+            font-family: Trebuchet MS, Arial;
+            color: navy;
+            padding-top: 20px;
+            padding-left: 50px;
+        }
+        #popup {
+            padding: 20px;
+            position: fixed;
+            background-color: #fff;
+            border: 2px solid navy;
+            top: 250px;
+            left: 225px;
+            width: 200px;
+            text-align: center;
+        }
+        input[type="button"] {
+            background-color: navy;
+            border: none;
+            color: #fff;
+            padding: 10px;
+            font-size: 16px;
+        }
+        #map {
+            background-color: lightskyblue;
+            border: 2px solid navy;
+        }
+            #map td {
+                width: 6px;
+                height: 6px;
+                border-top: 1px solid navy;
+                border-right: 1px solid navy;
+                box-shadow: inset 0 1px 3px white;
+            }
+        .snake {
+            background-color: blue;
+        }
+        .fruit {
+            background-color: red;
+        }
+        .position {
+            background-color: blue;
+            animation: blinker 0.3s step-start infinite;
+        }
+        @keyframes blinker {
+            40% {
+                opacity: 40%;
+            }
+        }
+    </style>
+    <script type="text/javascript">
+
+        const cols = 25
+        const rows = 15
+        const freedom = false
+
+        let snakeLength; let snake; let posX; let posY; let moving; let speed; let fruit; let score; let lastPos; let lastAction; let gameState;
+
+        function initVars() {
+            snakeLength = 10
+            snake = []
+            posX = Math.round(rows / 2)
+            posY = -1
+            moving = null
+            speed = 250
+            fruit = null
+            score = 0
+            lastPos = null
+            lastAction = null
+            gameState = 1
+        }
+
+        function startGame() {
+            document.getElementById("popup").style.display = 'none'
+            initVars()
+            renderMap()
+            addFruit()
+            moveRight()
+        }
+
+        function renderMap() {
+            let html = ""
+            for (let r = 0; r < rows; r++) {
+                html += "<tr>"
+                for (let c = 0; c < cols; c++)
+                    html += "<td></td>"
+                html += "</tr>"
+            }
+            document.getElementById("map").innerHTML = html
+            document.getElementById("score").innerHTML = score
+        }
+
+        function addFruit() {
+            let x; let y;
+            if (moving == null) {
+                x = posX
+                y = Math.round(cols / 2)
+            }
+            else {
+                x = Math.floor(Math.random() * (rows))
+                y = Math.floor(Math.random() * (cols))
+            }
+            if ((snake.indexOf(x + ":" + y) == -1)) {
+                document.getElementById("map").rows[x].cells[y].className = 'fruit'
+                fruit = x + ":" + y
+            }
+            else
+                addFruit()
+        }
+
+        function moveSnake() {
+            let move = false
+            if (freedom) {
+                if (posX < 0) posX = rows - 1
+                else if (posX > rows - 1) posX = 0
+                if (posY < 0) posY = cols - 1
+                else if (posY > cols - 1) posY = 0
+                move = true
+            }
+            else {
+                if ((posX >= 0 && posX <= rows - 1) && (posY >= 0 && posY <= cols - 1))
+                    move = true
+            }
+            if (move && (snake.indexOf(posX + ":" + posY) == -1)) {
+                let pos = document.getElementById("map").rows[posX].cells[posY]
+                pos.className = 'position'
+                if (lastPos != null) {
+                    if (lastPos != null)
+                        lastPos.className = 'snake'
+                }
+                lastPos = pos
+                snake.push(posX + ":" + posY)
+                if (snake.length > snakeLength) {
+                    let p = snake[0].split(":")
+                    document.getElementById("map").rows[p[0]].cells[p[1]].className = ''
+                    snake.shift()
+                }
+                if (fruit != null) {
+                    if (fruit == posX + ":" + posY) {
+                        addFruit()
+                        snakeLength++
+                        score++
+                        if (speed > 150)
+                            speed = speed - 10
+                        document.getElementById("score").innerHTML = score
+                    }
+                }
+            }
+            else {
+                gameState = -1
+                gameOver()
+            }
+        }
+
+        function moveUp() {
+            if (gameState != 1) {
+                clearInterval(moving)
+            }
+            else if (lastAction != "Down") {
+                posX--
+                moveSnake()
+                clearInterval(moving)
+                moving = setInterval(moveUp, speed)
+                lastAction = "Up"
+            }
+        }
+
+        function moveDown() {
+            if (gameState != 1) {
+                clearInterval(moving)
+            }
+            else if (lastAction != "Up") {
+                posX++
+                moveSnake()
+                clearInterval(moving)
+                moving = setInterval(moveDown, speed)
+                lastAction = "Down"
+            }
+        }
+
+        function moveLeft() {
+            if (gameState != 1) {
+                clearInterval(moving)
+            }
+            else if (lastAction != "Right") {
+                posY--
+                moveSnake()
+                clearInterval(moving)
+                moving = setInterval(moveLeft, speed)
+                lastAction = "Left"
+            }
+        }
+
+        function moveRight() {
+            if (gameState != 1) {
+                clearInterval(moving)
+            }
+            else if (lastAction != "Left") {
+                posY++
+                moveSnake()
+                clearInterval(moving)
+                moving = setInterval(moveRight, speed)
+                lastAction = "Right"
+            }
+        }
+
+        function pause() {
+            let popup = document.getElementById("popup")
+            if (gameState == 1) {
+                gameState = 0
+                popup.innerHTML = '<h2>JOGO PAUSADO!</h2><input type="button" value="Continuar" onclick="pause()" />'
+                popup.style.display = ''
+            }
+            else {
+                gameState = 1
+                popup.style.display = 'none'
+                if (lastAction == "Up") moveUp()
+                else if (lastAction == "Down") moveDown()
+                else if (lastAction == "Left") moveLeft()
+                else if (lastAction == "Right") moveRight()
+            }
+        }
+
+        function gameOver() {
+            let popup = document.getElementById("popup")
+            popup.innerHTML = '<h1>GAME OVER!</h1><input type="button" value="Jogar novamente" onclick="startGame()" />'
+            popup.style.display = ''
+        }
+
+        document.addEventListener("DOMContentLoaded", function (event) {
+            document.addEventListener("keydown", (event) => {
+                if (event.key == "ArrowUp") moveUp()
+                if (event.key == "ArrowDown") moveDown()
+                if (event.key == "ArrowLeft") moveLeft()
+                if (event.key == "ArrowRight") moveRight()
+                if (event.key == "Pause") pause()
+            })
+            startGame()
+        });
+
+    </script>
+</head>
+<body>
+
+    <h1>Snake</h1>
+    <p>
+        Utilize as setas para a cobra capturar as frutas, e a tecla "pause/break" para pausar<br>
+        A cobra vai crescendo,  e tornando-se mais veloz, a medida em que come mais frutas
+    </p>
+
+    <table id="map" border="0" cellpadding="10" cellspacing="0"></table>
+    <h2>
+        Frutas: <span id="score">0</span>
+    </h2>
+
+    <div id="popup"></div>
+
+</body>
+</html>
